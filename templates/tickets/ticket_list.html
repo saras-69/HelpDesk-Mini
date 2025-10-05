@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load ticket_tags %}
+
+{% block title %}All Tickets - HelpDesk Mini{% endblock %}
+
+{% block content %}
+<div class="glass-card shadow-lg rounded-lg">
+    <div class="px-4 sm:px-6 lg:max-w-6xl lg:mx-auto lg:px-8">
+        <div class="py-6 md:flex md:items-center md:justify-between">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center">
+                    <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                        All Tickets
+                    </h2>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3 md:mt-0 md:ml-4">
+                <a href="{% url 'ticket_create' %}" class="bg-help-blue hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200">
+                    Create New Ticket
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto mt-8 px-4 sm:px-6 lg:px-8">
+    <!-- Search and Filters -->
+    <div class="glass-card shadow-lg rounded-lg mb-6">
+        <div class="px-6 py-4">
+            <form method="get" class="flex flex-wrap gap-4">
+                <div class="flex-1 min-w-64">
+                    <input type="text" name="search" value="{{ search|default:'' }}" 
+                           placeholder="Search tickets..." 
+                           class="glass-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-help-blue focus:border-help-blue">
+                </div>
+                <div>
+                    <select name="status" class="glass-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-help-blue focus:border-help-blue">
+                        <option value="">All Statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <select name="priority" class="glass-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-help-blue focus:border-help-blue">
+                        <option value="">All Priorities</option>
+                        {% for value, label in priority_choices %}
+                            <option value="{{ value }}" {% if priority == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="bg-help-blue hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200">Filter</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tickets List -->
+    <div class="glass-card shadow-lg overflow-hidden sm:rounded-md">
+        <ul class="divide-y divide-gray-200 divide-opacity-30">
+            {% for ticket in page_obj %}
+                <li>
+                    <a href="{% url 'ticket_detail' ticket.id %}" class="block hover:bg-white hover:bg-opacity-20 transition-colors duration-200">
+                        <div class="px-4 py-4 sm:px-6">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <p class="text-sm font-medium text-help-blue truncate">
+                                        #{{ ticket.id|slice:":8" }} - {{ ticket.title }}
+                                    </p>
+                                    <div class="ml-2 flex-shrink-0">
+                                        <span class="badge {{ ticket.status|status_badge_class }}">
+                                            {{ ticket.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center text-sm text-gray-500">
+                                    <span class="{{ ticket.priority|priority_class }} px-2 py-1 rounded text-xs border">
+                                        {{ ticket.get_priority_display }}
+                                    </span>
+                                    {% if ticket.is_sla_breached %}
+                                        <span class="ml-2 text-red-600 font-medium">SLA BREACHED</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="mt-2 sm:flex sm:justify-between">
+                                <div class="sm:flex">
+                                    <p class="flex items-center text-sm text-gray-500">
+                                        Created by {{ ticket.created_by.username }}
+                                        {% if ticket.assigned_to %}
+                                            • Assigned to {{ ticket.assigned_to.username }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                    <p>
+                                        {{ ticket.created_at|timesince }} ago
+                                        {% if ticket.sla_due_date %}
+                                            • SLA: {{ ticket.sla_due_date|timeuntil }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            {% if ticket.description %}
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-700">
+                                        {{ ticket.description|truncatewords:20 }}
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                </li>
+            {% empty %}
+                <li class="px-4 py-8 text-center text-gray-500">
+                    No tickets found. <a href="{% url 'ticket_create' %}" class="text-help-blue hover:underline">Create your first ticket</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-6 rounded-lg shadow">
+            <div class="flex-1 flex justify-between sm:hidden">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if priority %}&priority={{ priority }}{% endif %}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if priority %}&priority={{ priority }}{% endif %}" 
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Showing <span class="font-medium">{{ page_obj.start_index }}</span> to <span class="font-medium">{{ page_obj.end_index }}</span> of <span class="font-medium">{{ page_obj.paginator.count }}</span> results
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if priority %}&priority={{ priority }}{% endif %}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Previous
+                            </a>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if priority %}&priority={{ priority }}{% endif %}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Next
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
