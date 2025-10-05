@@ -24,13 +24,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+# Railway environment detection
+RAILWAY_ENVIRONMENT = os.environ.get('RAILWAY_ENVIRONMENT')
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-+c=b4b7#)1s7krxw5a9&4vgeewinqne!iq)ri87c7u-en&sm_$')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
-
-ALLOWED_HOSTS = []
+if RAILWAY_ENVIRONMENT:
+    DEBUG = False
+    ALLOWED_HOSTS = ['*']
+else:
+    DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -52,6 +58,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add this for static files on Railway
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -83,20 +90,38 @@ WSGI_APPLICATION = 'HelpDesk.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Replace the DATABASES section with PostgreSQL configuration
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
-        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+# Railway production database or local development database
+if RAILWAY_ENVIRONMENT and os.getenv("DATABASE_URL"):
+    # Railway production with PostgreSQL
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL')
+        )
     }
-}
+else:
+    # Local development - use PostgreSQL if DATABASE_URL is set, otherwise fallback to SQLite
+    if os.getenv("DATABASE_URL"):
+        tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': tmpPostgres.path.replace('/', ''),
+                'USER': tmpPostgres.username,
+                'PASSWORD': tmpPostgres.password,
+                'HOST': tmpPostgres.hostname,
+                'PORT': 5432,
+                'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+            }
+        }
+    else:
+        # Fallback to SQLite for local development
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 
 
 # Password validation
@@ -166,12 +191,20 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+if RAILWAY_ENVIRONMENT:
+    # Production CORS settings for Railway
+    CORS_ALLOWED_ORIGINS = [
+        "https://*.railway.app",
+    ]
+    CORS_ALLOW_ALL_ORIGINS = True  # For Railway deployment
+else:
+    # Development CORS settings
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -182,3 +215,10 @@ AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'ticket_list'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Security settings for Railway production
+if RAILWAY_ENVIRONMENT:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    CSRF_TRUSTED_ORIGINS = ['https://*.railway.app']
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
