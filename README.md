@@ -529,7 +529,7 @@ Found a bug? Please include:
 
 | Type | Contact |
 |------|---------|
-| 📧 **Email** | support@helpdesk-mini.com |
+| 📧 **Email** |saketsingh102003@gmail.com |
 | 🐛 **Bug Reports** | [Create an Issue](https://github.com/saras-69/HelpDesk-Mini/issues) |
 | 💡 **Feature Requests** | [Discussion Board](https://github.com/saras-69/HelpDesk-Mini/discussions) |
 | 📚 **Documentation** | [Wiki](https://github.com/saras-69/HelpDesk-Mini/wiki) |
@@ -584,4 +584,5 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 </div>#   H e l p D e s k - M i n i 
  
+
  
